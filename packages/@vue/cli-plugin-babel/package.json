@@ -1,40 +1,121 @@
-{
-  "name": "@vue/cli-plugin-babel",
-  "version": "5.0.0-alpha.0",
-  "description": "babel plugin for vue-cli",
-  "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vuejs/vue-cli.git",
-    "directory": "packages/@vue/cli-plugin-babel"
-  },
-  "keywords": [
-    "vue",
-    "cli",
-    "babel"
-  ],
-  "author": "Evan You",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/vuejs/vue-cli/issues"
-  },
-  "homepage": "https://github.com/vuejs/vue-cli/tree/dev/packages/@vue/cli-plugin-babel#readme",
-  "dependencies": {
-    "@babel/core": "^7.12.10",
-    "@vue/babel-preset-app": "^5.0.0-alpha.0",
-    "@vue/cli-shared-utils": "^5.0.0-alpha.0",
-    "babel-loader": "^8.2.2",
-    "thread-loader": "^3.0.0",
-    "webpack": "^5.10.0"
-  },
-  "peerDependencies": {
-    "@vue/cli-service": "^3.0.0 || ^4.0.0 || ^5.0.0-0"
-  },
-  "devDependencies": {
-    "@babel/preset-env": "^7.12.10",
-    "jscodeshift": "^0.11.0"
-  },
-  "publishConfig": {
-    "access": "public"
-  }
+<template>
+    <div>
+         <video
+         autoplay
+         muted
+         playsInline
+         v-bind="camera"
+         width="640"
+         height="480"
+         id="cam"
+         style="position:fixed;top:50px"
+        />
+        <canvas
+         id="c"
+         width="640"
+         height="480"
+         style="position:fixed;top:50px"
+        /> 
+    <div/>
+</template>
+
+<script>
+import '@tensorflow-models/coco-ssd';
+import * as cocoSsd from "@tensorflow-models/coco-ssd";
+import { reactive,onMounted } from 'vue';
+ 
+export default {
+    name:'App',
+    setup(){
+        const camera = reactive({
+            srcObject : null,
+        });
+
+        const constraint = {
+            audio : false,
+            video : true
+        }
+
+        const webcam = async() =>{
+            try{
+              camera.srcObject = await navigator.mediaDevices.getUsetMedia(constraitnt); 
+              await camera.onloadedmetadata;
+            }
+            catch(e)
+            {
+                console.log(e);
+            }
+        }
+        const load = async() => {
+            try{
+                await webcam();
+                const loadMode = await cocoSsd. load({base:"mobilenet_v2"});
+                const cam = document.getElementById('cam');
+                detectFromVideoFrame(loadModel, cam);
+            }
+            catch(e)
+            {
+                console.log(e)
+            }
+        }
+        const detectFromVideoFrame = (model, video) => {
+            model.detect(video).then(predictions=>{
+                showDetection(predictions);
+                webkitRequestAnimationFrame(()=>{
+                    detectFromVideoFrame(model, video);
+                });
+            }, (error)=>{
+                console.log(error);
+            });
+        }
+
+        const showDetection = prediction =>{
+           const c =document.getElementById("c");
+           const ctx = c.getContext("2d");
+           ctx.clearRect(0,0, ctx.canvas.width, ctx.canvas.height);
+           const font = "24px helvetical";
+           ctx.font = font;
+           ctx.textBaseline = "top";
+
+           prediction.forEach(prediction=>{
+              const x = prediction.bbox[0];
+              const y = prediction.bbox[1];
+              const width = prediction.bbox[2];
+              const height = prediction.bbox[3];
+
+              ctx.strokeStyle = "#2fff00";
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x,y,widht,height) ;
+
+              ctx.fillStyle="#2fff00";
+
+              let predictionText = prediction.class;
+
+              const textWidth = ctx.measureText(predictionText).width;
+              const textHeight = parseInt(font, 10);
+
+              ctx.fillRect(x,y,textWidth+10, textHeight+10);
+              ctx.fillRect(x,y+height-textHeight, textWidth+15, textHeight+10);
+
+              ctx.fillStyle="#00000";
+              ctx.fillText(predictionText,x,y);
+              ctx.fillText(prediction.score.toFixed(2),x,y+height-textHeight);
+           });
+        }
+        
+        onMounted(() =>{
+         if(navigation.mediaDevices.getUserMedia||navigator.mediaDevices.webkitGetUserMedia)
+         {
+          load();
+         }else{
+             alert("not supported");
+         }
+        });
+
+        return{
+            camera,
+        }
+
+    }
 }
+</script>
